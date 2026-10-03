@@ -1,0 +1,7 @@
+﻿services:
+  ecma:
+    image: ecma
+    build:
+      context: .
+      dockerfile: Dockerfile
+
