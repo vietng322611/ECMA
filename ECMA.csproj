@@ -7,4 +7,11 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="docs\api\" />
+      <Folder Include="docs\architechture\" />
+      <Folder Include="docs\database\" />
+      <Folder Include="docs\uml\" />
+    </ItemGroup>
+
 </Project>
