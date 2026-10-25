@@ -1,8 +1,39 @@
+@model PublicEventSearchViewModel
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Tra cứu sự kiện";
 }
-
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="page-shell">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Sự kiện công khai</p>
+            <h1>Tra cứu sự kiện</h1>
+        </div>
+    </header>
+    @if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
+    @if (Model.ErrorMessage is not null) { <p class="notice notice-error" role="alert">@Model.ErrorMessage</p> }
+    <form class="filter-bar public-filter-bar" method="get" asp-controller="Home" asp-action="Index">
+        <div class="field filter-search"><label for="keyword">Từ khóa</label><input id="keyword" name="keyword" value="@Model.Keyword" maxlength="100" placeholder="Tiêu đề hoặc địa điểm" /></div>
+        <div class="field"><label for="type">Loại</label><select id="type" name="type"><option value="All" selected="@(Model.Type is null or "All")">Tất cả</option><option value="Event" selected="@(Model.Type == "Event")">Sự kiện</option><option value="Conference" selected="@(Model.Type == "Conference")">Hội nghị</option></select></div>
+        <div class="field"><label for="from">Từ ngày</label><input id="from" name="from" type="date" value="@Model.From" /></div>
+        <div class="field"><label for="to">Đến ngày</label><input id="to" name="to" type="date" value="@Model.To" /></div>
+        <input type="hidden" name="page" value="1" />
+        <div class="filter-actions"><button class="button button-primary" type="submit">Tìm kiếm</button><a class="button button-secondary" asp-controller="Home" asp-action="Index">Xóa lọc</a></div>
+    </form>
+    <section class="data-panel" aria-labelledby="public-list-title">
+        <div class="panel-heading"><div><h2 id="public-list-title">Sự kiện sắp diễn ra và đang diễn ra</h2><p>@Model.Events.Count sự kiện trên trang @Model.Page</p></div></div>
+        @if (Model.Events.Count == 0)
+        {
+            <div class="empty-state"><h3>Không có sự kiện phù hợp</h3><p>Thử đổi từ khóa, loại hoặc khoảng ngày.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll"><table><thead><tr><th>Sự kiện</th><th>Loại</th><th>Thời gian</th><th>Địa điểm</th><th>Chỗ còn lại</th><th>Tình trạng</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>
+            @foreach (var item in Model.Events)
+            {
+                <tr><td><a class="table-title" asp-controller="PublicEvents" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></td><td>@Labels.Type(item.Type)</td><td><strong>@VietnamTime.Format(item.StartAt, "dd/MM/yyyy")</strong><span class="table-meta">@VietnamTime.Format(item.StartAt, "HH:mm")–@VietnamTime.Format(item.EndAt, "dd/MM HH:mm")</span></td><td class="table-location">@item.Location</td><td>@item.Remaining.ToString("N0") / @item.Capacity.ToString("N0")</td><td><span class="availability availability-@item.Availability.ToString().ToLowerInvariant()">@Labels.Availability(item.Availability)</span></td><td class="table-action"><a asp-controller="PublicEvents" asp-action="Details" asp-route-id="@item.Id">Xem chi tiết</a></td></tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+    <nav class="pagination" aria-label="Phân trang"><span>Trang @Model.Page</span><div>@if (Model.Page > 1) { <a class="button button-secondary" asp-controller="Home" asp-action="Index" asp-route-keyword="@Model.Keyword" asp-route-type="@Model.Type" asp-route-from="@Model.From" asp-route-to="@Model.To" asp-route-page="@(Model.Page - 1)">Trang trước</a> } @if (Model.Events.Count == EMCA.Application.Services.PublicEventService.PageSize) { <a class="button button-secondary" asp-controller="Home" asp-action="Index" asp-route-keyword="@Model.Keyword" asp-route-type="@Model.Type" asp-route-from="@Model.From" asp-route-to="@Model.To" asp-route-page="@(Model.Page + 1)">Trang sau</a> }</div></nav>
 </div>

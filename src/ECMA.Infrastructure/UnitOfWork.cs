@@ -9,6 +9,7 @@ public sealed class UnitOfWork(EcmaDbContext context) : IUnitOfWork
 {
     public IUserRepository Users { get; } = new UserRepository(context);
     public IEventRepository Events { get; } = new EventRepository(context);
+    public IRegistrationRepository Registrations { get; } = new RegistrationRepository(context);
 
     public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         new EfUnitOfWorkTransaction(await context.Database.BeginTransactionAsync(cancellationToken));

@@ -26,7 +26,8 @@ public sealed class EventService(IUnitOfWork unitOfWork, IClock clock) : IEventS
     {
         var item = await unitOfWork.Events.FindAsync(id, false, cancellationToken);
         var user = await unitOfWork.Users.FindByIdAsync(actor.UserId, cancellationToken);
-        return item is null || !CanView(user, item) ? Result<EventDto>.Failure(Error.NotFound("Không tìm thấy dữ liệu")) : Result<EventDto>.Success(ToDto(item, CanManage(user!, item)));
+        return item is null || !await EventAccessPolicy.CanViewAsync(unitOfWork, user, item, clock.UtcNow, cancellationToken)
+            ? Result<EventDto>.Failure(Error.NotFound("Không tìm thấy dữ liệu")) : Result<EventDto>.Success(ToDto(item, CanManage(user!, item)));
     }
 
     public async Task<Result<EventDto>> CreateAsync(EventActor actor, EventData data, CancellationToken cancellationToken = default)
@@ -51,8 +52,13 @@ public sealed class EventService(IUnitOfWork unitOfWork, IClock clock) : IEventS
     public Task<Result> PublishAsync(EventActor actor, Guid id, CancellationToken cancellationToken = default) =>
         WriteResultAsync(actor, id, e => e.Publish(clock.UtcNow), cancellationToken);
 
-    public Task<Result> CancelAsync(EventActor actor, Guid id, string reason, CancellationToken cancellationToken = default) =>
-        WriteResultAsync(actor, id, e => e.Cancel(reason, actor.UserId, clock.UtcNow), cancellationToken);
+    // BR-EVT-04: confirmed registrations are cancelled with source EVENT in the same transaction as the event.
+    public async Task<Result> CancelAsync(EventActor actor, Guid id, string reason, CancellationToken cancellationToken = default)
+    {
+        var result = await WriteAsync(actor, id, e => e.Cancel(reason, actor.UserId, clock.UtcNow), _ => true, cancellationToken,
+            e => unitOfWork.Registrations.CancelConfirmedForEventAsync(e.Id, e.CancelledBy!.Value, e.CancelledAt!.Value, e.CancelReason!, cancellationToken));
+        return result.IsFailure ? Result.Failure(result.Error!) : Result.Success();
+    }
 
     public Task<Result> DeleteAsync(EventActor actor, Guid id, CancellationToken cancellationToken = default) =>
         WriteResultAsync(actor, id, e => e.Delete(), cancellationToken);
@@ -78,15 +84,17 @@ public sealed class EventService(IUnitOfWork unitOfWork, IClock clock) : IEventS
         return result.IsFailure ? Result.Failure(result.Error!) : Result.Success();
     }
 
-    private async Task<Result<T>> WriteAsync<T>(EventActor actor, Guid id, Func<Event, Result> change, Func<Event, T> value, CancellationToken cancellationToken)
+    private async Task<Result<T>> WriteAsync<T>(EventActor actor, Guid id, Func<Event, Result> change, Func<Event, T> value, CancellationToken cancellationToken,
+        Func<Event, Task>? afterChange = null)
     {
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         var user = await unitOfWork.Users.FindByIdForUpdateAsync(actor.UserId, cancellationToken);
         var item = await unitOfWork.Events.FindAsync(id, true, cancellationToken);
-        if (item is null || !CanView(user, item)) return Result<T>.Failure(Error.NotFound("Không tìm thấy dữ liệu"));
+        if (item is null || !await EventAccessPolicy.CanViewAsync(unitOfWork, user, item, clock.UtcNow, cancellationToken)) return Result<T>.Failure(Error.NotFound("Không tìm thấy dữ liệu"));
         if (!CanManage(user!, item)) return Forbidden<T>();
         var result = change(item);
         if (result.IsFailure) return Result<T>.Failure(result.Error!);
+        if (afterChange is not null) await afterChange(item);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return Result<T>.Success(value(item));
@@ -97,7 +105,7 @@ public sealed class EventService(IUnitOfWork unitOfWork, IClock clock) : IEventS
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         var user = await unitOfWork.Users.FindByIdForUpdateAsync(actor.UserId, cancellationToken);
         var item = await unitOfWork.Events.FindAsync(id, true, cancellationToken);
-        if (item is null || !CanView(user, item)) return Result<TOutput>.Failure(Error.NotFound("Không tìm thấy dữ liệu"));
+        if (item is null || !await EventAccessPolicy.CanViewAsync(unitOfWork, user, item, clock.UtcNow, cancellationToken)) return Result<TOutput>.Failure(Error.NotFound("Không tìm thấy dữ liệu"));
         if (!CanManage(user!, item)) return Forbidden<TOutput>();
         var result = change(item);
         if (result.IsFailure) return Result<TOutput>.Failure(result.Error!);
@@ -107,14 +115,7 @@ public sealed class EventService(IUnitOfWork unitOfWork, IClock clock) : IEventS
     }
 
     private static bool CanCreate(User? user) => user is { Status: UserStatus.Active, Role: UserRole.Organizer or UserRole.Admin };
-    private static bool CanManage(User user, Event item) => user.Role == UserRole.Admin || user.Role == UserRole.Organizer && item.OwnerId == user.Id;
-    private static bool CanView(User? user, Event item) => user is { Status: UserStatus.Active } && item.Status switch
-    {
-        EventStatus.Draft => user.Role == UserRole.Admin || user.Role == UserRole.Organizer && item.OwnerId == user.Id,
-        EventStatus.Published => true,
-        EventStatus.Cancelled => user.Role == UserRole.Admin || item.OwnerId == user.Id,
-        _ => false
-    };
+    private static bool CanManage(User user, Event item) => EventAccessPolicy.CanManage(user, item);
     private static Result<T> Forbidden<T>() => Result<T>.Failure(Error.Forbidden("Bạn không có quyền thực hiện thao tác này"));
     private static string? NormalizeKeyword(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Normalize(NormalizationForm.FormC).Trim();
     private static bool TryType(string? value, out EventType? result) { result = value switch { "Event" => EventType.Event, "Conference" => EventType.Conference, _ => null }; return value is null or "All" or "Event" or "Conference"; }

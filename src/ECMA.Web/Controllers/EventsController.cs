@@ -328,7 +328,7 @@ public sealed class EventsController(IEventService events, IClock clock, Vietnam
             Id = x.Id, OwnerId = x.OwnerId, Type = x.Type, Title = x.Title, Description = x.Description, Location = x.Location,
             StartAt = ToVietnamTime(x.StartAt), EndAt = ToVietnamTime(x.EndAt), Capacity = x.Capacity, Status = x.Status,
             CreatedAt = ToVietnamTime(x.CreatedAt), CancelReason = x.CancelReason,
-            CanEditPublished = canChangePublished, CanCancel = canChangePublished,
+            CanEditPublished = canChangePublished, CanCancel = canChangePublished, CanManage = x.CanManage,
             Agenda = x.Agenda.Select(a => new AgendaItemViewModel
             {
                 Id = a.Id, Title = a.Title, Content = a.Content, StartAt = ToVietnamTime(a.StartAt), EndAt = ToVietnamTime(a.EndAt)

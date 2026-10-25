@@ -1,0 +1,12 @@
+@model StatusMessageViewModel
+@{
+    ViewData["Title"] = Model.StatusCode switch { 404 => "Không tìm thấy", 403 => "Không có quyền", 409 => "Không thể thực hiện", _ => "Yêu cầu không hợp lệ" };
+}
+<div class="page-shell form-page">
+    <section class="form-surface status-surface" aria-labelledby="status-title">
+        <p class="eyebrow">Mã @Model.StatusCode</p>
+        <h1 id="status-title">@ViewData["Title"]</h1>
+        <p class="notice notice-error" role="alert">@Model.Message</p>
+        <a class="button button-secondary" href="@Model.BackUrl">@Model.BackLabel</a>
+    </section>
+</div>

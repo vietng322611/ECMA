@@ -25,7 +25,6 @@ namespace ECMA.Infrastructure.Migrations
             modelBuilder.Entity("ECMA.Domain.Entities.AgendaItem", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -155,9 +154,9 @@ namespace ECMA.Infrastructure.Migrations
 
                     b.ToTable("events", null, t =>
                         {
-                            t.HasCheckConstraint("ck_events_capacity", "capacity BETWEEN 1 AND 10000");
-
                             t.HasCheckConstraint("ck_events_cancellation", "(status = 2) = (cancelled_at IS NOT NULL AND cancelled_by IS NOT NULL AND cancel_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_events_capacity", "capacity BETWEEN 1 AND 10000");
 
                             t.HasCheckConstraint("ck_events_minute_precision", "date_trunc('minute', start_at) = start_at AND date_trunc('minute', end_at) = end_at");
 
@@ -168,6 +167,94 @@ namespace ECMA.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_events_time", "end_at >= start_at + interval '5 minutes' AND end_at <= start_at + interval '30 days'");
 
                             t.HasCheckConstraint("ck_events_type", "type IN (0, 1)");
+                        });
+                });
+
+            modelBuilder.Entity("ECMA.Domain.Entities.Registration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<int?>("CancelSource")
+                        .HasColumnType("integer")
+                        .HasColumnName("cancel_source");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<Guid?>("CancelledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<DateTime?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checked_in_at");
+
+                    b.Property<Guid?>("CheckedInBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checked_in_by");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("code");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("RegisteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("registered_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registrations");
+
+                    b.HasIndex("CancelledBy");
+
+                    b.HasIndex("CheckedInBy");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("uq_registrations_code");
+
+                    b.HasIndex("EventId", "RegisteredAt")
+                        .HasDatabaseName("ix_registrations_event_registered");
+
+                    b.HasIndex("EventId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_registrations_event_user");
+
+                    b.HasIndex("UserId", "RegisteredAt")
+                        .HasDatabaseName("ix_registrations_user_registered");
+
+                    b.ToTable("registrations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_registrations_cancel_source", "cancel_source IS NULL OR cancel_source IN (0, 1, 2)");
+
+                            t.HasCheckConstraint("ck_registrations_cancellation", "(status = 1) = (cancel_source IS NOT NULL AND cancelled_at IS NOT NULL AND cancelled_by IS NOT NULL AND cancel_reason IS NOT NULL) AND (status = 0) = (cancel_source IS NULL AND cancelled_at IS NULL AND cancelled_by IS NULL AND cancel_reason IS NULL)");
+
+                            t.HasCheckConstraint("ck_registrations_check_in", "(checked_in_at IS NULL) = (checked_in_by IS NULL) AND (checked_in_at IS NULL OR status = 0)");
+
+                            t.HasCheckConstraint("ck_registrations_code", "code ~ '^REG-[A-Z0-9]{12}$'");
+
+                            t.HasCheckConstraint("ck_registrations_status", "status IN (0, 1)");
                         });
                 });
 
@@ -248,6 +335,35 @@ namespace ECMA.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_events_owner");
+                });
+
+            modelBuilder.Entity("ECMA.Domain.Entities.Registration", b =>
+                {
+                    b.HasOne("ECMA.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CancelledBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registrations_cancelled_by");
+
+                    b.HasOne("ECMA.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CheckedInBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_registrations_checked_in_by");
+
+                    b.HasOne("ECMA.Domain.Entities.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registrations_event");
+
+                    b.HasOne("ECMA.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_registrations_user");
                 });
 
             modelBuilder.Entity("ECMA.Domain.Entities.Event", b =>

@@ -12,6 +12,10 @@
         <div class="flex min-w-0 items-center gap-7">
             <a class="shrink-0 text-2xl font-black tracking-tight text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-area="" asp-controller="Home" asp-action="Index">ECMA</a>
             <a class="truncate text-sm font-semibold text-stone-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-area="" asp-controller="Home" asp-action="Index">Tra cứu sự kiện</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a class="truncate text-sm font-semibold text-stone-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-controller="PublicEvents" asp-action="MyRegistrations">Đăng ký của tôi</a>
+            }
             @if (User.IsInRole("Organizer") || User.IsInRole("Admin"))
             {
                 <a class="truncate text-sm font-semibold text-stone-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-controller="Events" asp-action="Index">Quản lý sự kiện</a>

@@ -1,0 +1,38 @@
+@model PublicEventDetailsViewModel
+@using ECMA.Domain.Enums
+@using EMCA.Application.DTOs
+@{
+    var e = Model.Event;
+    ViewData["Title"] = e.Title;
+    var groups = e.Agenda.GroupBy(x => VietnamTime.ToLocal(x.StartAt).Date);
+    var mine = e.MyRegistration;
+    var canSubmit = e.Availability == Availability.Open && !e.IsOwner && mine?.Status != RegistrationStatus.Confirmed && mine?.CancelSource != CancelSource.Manager;
+    var detailsUrl = Url.Action("Details", "PublicEvents", new { id = e.Id });
+}
+<div class="page-shell">
+<a class="back-link" asp-controller="Home" asp-action="Index">Quay lại tra cứu</a>
+@if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
+<header class="detail-hero"><div><div class="detail-kicker"><span>@Labels.Type(e.Type)</span><span class="status status-@e.Status.ToString().ToLowerInvariant()">@Labels.Status(e.Status)</span></div><h1>@e.Title</h1><p>@e.Description</p></div>
+<div class="detail-actions">
+@if (e.CanManage) { <a class="button button-secondary" asp-controller="Events" asp-action="Details" asp-route-id="@e.Id">Quản lý sự kiện</a> }
+</div></header>
+<div class="detail-layout"><main class="detail-main"><section class="agenda-section" aria-labelledby="agenda-title"><div class="section-heading"><div><p class="eyebrow">Lịch trình</p><h2 id="agenda-title">Chương trình</h2></div></div>
+@if (e.Agenda.Count == 0) { <div class="empty-state"><h3>Chưa có chương trình</h3><p>Sự kiện này không có mục chương trình.</p></div> }
+else { <div class="agenda-list">@foreach (var group in groups) { <section class="agenda-day"><h3>@group.Key.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN"))</h3><div>@foreach (var item in group) { <article class="agenda-item"><time>@VietnamTime.Format(item.StartAt, "HH:mm")<span>@VietnamTime.Format(item.EndAt, "HH:mm")</span></time><div><h4>@item.Title</h4>@if (!string.IsNullOrWhiteSpace(item.Content)) { <p>@item.Content</p> }</div></article> }</div></section> }</div> }
+</section></main>
+<aside class="detail-sidebar" aria-label="Thông tin sự kiện">
+<section class="registration-panel" aria-labelledby="registration-title"><h2 id="registration-title">Đăng ký tham dự</h2>
+<p class="availability availability-@e.Availability.ToString().ToLowerInvariant()">@Labels.Availability(e.Availability)</p>
+<p class="seat-count"><strong>@e.Remaining.ToString("N0")</strong> / @e.Capacity.ToString("N0") chỗ còn lại</p>
+@if (e.IsOwner) { <p class="field-hint">Bạn là người tổ chức sự kiện này.</p> }
+else if (mine?.Status == RegistrationStatus.Confirmed) { <p class="field-hint">Bạn đã đăng ký sự kiện này.</p><a class="button button-secondary" asp-controller="PublicEvents" asp-action="MyRegistrations">Xem Đăng ký của tôi</a> }
+else if (mine?.CancelSource == CancelSource.Manager) { <p class="field-hint">Đăng ký của bạn đã bị ban tổ chức hủy. Bạn không thể đăng ký lại sự kiện này.</p> }
+@if (canSubmit)
+{
+    if (Model.IsAuthenticated) { <form asp-controller="PublicEvents" asp-action="Register" asp-route-id="@e.Id" method="post"><button class="button button-primary" type="submit">Xác nhận đăng ký</button></form> }
+    else { <a class="button button-primary" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@detailsUrl">Đăng nhập để đăng ký</a> }
+}
+</section>
+<section><h2>Thông tin</h2><dl class="facts"><div><dt>Thời gian</dt><dd>@VietnamTime.Format(e.StartAt)<span>đến @VietnamTime.Format(e.EndAt)</span></dd></div><div><dt>Địa điểm</dt><dd>@e.Location</dd></div><div><dt>Tổ chức</dt><dd>@e.OwnerName</dd></div><div><dt>Sức chứa</dt><dd>@e.Capacity.ToString("N0") người</dd></div></dl></section>
+@if (e.Status == EffectiveEventStatus.Cancelled && !string.IsNullOrWhiteSpace(e.CancelReason)) { <section class="cancel-note"><h2>Lý do hủy</h2><p>@e.CancelReason</p></section> }
+</aside></div></div>

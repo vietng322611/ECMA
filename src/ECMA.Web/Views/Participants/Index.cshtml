@@ -1,0 +1,53 @@
+@model ParticipantsViewModel
+@using ECMA.Domain.Enums
+@{
+    var data = Model.Data;
+    var stats = data.Stats;
+    ViewData["Title"] = "Người tham dự - " + data.EventTitle;
+}
+<div class="page-shell">
+    <a class="back-link" asp-controller="Events" asp-action="Details" asp-route-id="@data.EventId">Quay lại chi tiết quản lý</a>
+    <header class="page-heading"><div><p class="eyebrow">Người tham dự và thống kê</p><h1>@data.EventTitle</h1><p class="field-hint">@VietnamTime.Format(data.StartAt) đến @VietnamTime.Format(data.EndAt) · <span class="status status-@data.EventStatus.ToString().ToLowerInvariant()">@Labels.Status(data.EventStatus)</span></p></div></header>
+    @if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
+    <dl class="stats-grid" aria-label="Thống kê toàn bộ sự kiện">
+        <div><dt>Đang đăng ký</dt><dd>@stats.Confirmed.ToString("N0")</dd></div>
+        <div><dt>Đã hủy</dt><dd>@stats.Cancelled.ToString("N0")</dd></div>
+        <div><dt>Còn chỗ</dt><dd>@stats.Remaining.ToString("N0") <span>/ @stats.Capacity.ToString("N0")</span></dd></div>
+        <div><dt>Đã điểm danh</dt><dd>@stats.CheckedIn.ToString("N0")</dd></div>
+        <div><dt>Chưa điểm danh</dt><dd>@stats.NotCheckedIn.ToString("N0")</dd></div>
+        <div><dt>Tỷ lệ tham dự</dt><dd>@stats.AttendanceRate.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))%</dd></div>
+        <div><dt>Vắng mặt</dt><dd>@(stats.Absent?.ToString("N0") ?? "Chưa xác định")</dd></div>
+    </dl>
+    <form class="filter-bar" method="get" asp-action="Index" asp-route-eventId="@data.EventId">
+        <div class="field filter-search"><label for="keyword">Tìm kiếm</label><input id="keyword" name="keyword" value="@Model.Keyword" maxlength="100" placeholder="Username, họ tên hoặc mã đăng ký" /></div>
+        <div class="field"><label for="status">Trạng thái</label><select id="status" name="status"><option value="All" selected="@(Model.Status is null or "All")">Tất cả</option><option value="Confirmed" selected="@(Model.Status == "Confirmed")">Đang đăng ký</option><option value="Cancelled" selected="@(Model.Status == "Cancelled")">Đã hủy</option></select></div>
+        <div class="field"><label for="checkIn">Điểm danh</label><select id="checkIn" name="checkIn"><option value="All" selected="@(Model.CheckIn is null or "All")">Tất cả</option><option value="CheckedIn" selected="@(Model.CheckIn == "CheckedIn")">Đã điểm danh</option><option value="NotCheckedIn" selected="@(Model.CheckIn == "NotCheckedIn")">Chưa điểm danh</option></select></div>
+        <input type="hidden" name="page" value="1" />
+        <div class="filter-actions"><button class="button button-primary" type="submit">Áp dụng</button><a class="button button-secondary" asp-action="Index" asp-route-eventId="@data.EventId">Xóa lọc</a></div>
+    </form>
+    <section class="data-panel" aria-labelledby="participant-list-title">
+        <div class="panel-heading"><div><h2 id="participant-list-title">Danh sách đăng ký</h2><p>@data.Items.Count đăng ký trên trang @data.Page</p></div></div>
+        @if (data.Items.Count == 0)
+        {
+            <div class="empty-state"><h3>Không có đăng ký phù hợp</h3><p>Điều chỉnh từ khóa hoặc bộ lọc.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll"><table><thead><tr><th>Người tham dự</th><th>Mã đăng ký</th><th>Trạng thái</th><th>Đăng ký gần nhất</th><th>Điểm danh</th><th>Hủy</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>
+            @foreach (var item in data.Items)
+            {
+                <tr>
+                    <td><strong>@item.FullName</strong><span class="table-meta">@item.Username</span></td>
+                    <td><code class="registration-code">@item.Code</code></td>
+                    <td><span class="status status-@(item.Status == RegistrationStatus.Confirmed ? "published" : "cancelled")">@Labels.Registration(item.Status)</span></td>
+                    <td>@VietnamTime.Format(item.RegisteredAt, "dd/MM/yyyy HH:mm")</td>
+                    <td>@if (item.CheckedInAt is null) { <span>Chưa điểm danh</span> } else { <span>@VietnamTime.Format(item.CheckedInAt.Value, "dd/MM/yyyy HH:mm:ss")</span><span class="table-meta">bởi @item.CheckedInBy</span> }</td>
+                    <td>@if (item.CancelledAt is not null) { <span>@VietnamTime.Format(item.CancelledAt.Value, "dd/MM/yyyy HH:mm")</span><span class="table-meta">@Labels.Source(item.CancelSource) · @item.CancelledBy</span><span class="table-meta">@item.CancelReason</span> }</td>
+                    <td class="table-action">@if (data.CanCancel && item.Status == RegistrationStatus.Confirmed && item.CheckedInAt is null) { <a asp-action="Cancel" asp-route-eventId="@data.EventId" asp-route-registrationId="@item.Id">Hủy đăng ký</a> }</td>
+                </tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+    <nav class="pagination" aria-label="Phân trang"><span>Trang @data.Page</span><div>@if (data.Page > 1) { <a class="button button-secondary" asp-action="Index" asp-route-eventId="@data.EventId" asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-checkIn="@Model.CheckIn" asp-route-page="@(data.Page - 1)">Trang trước</a> } @if (data.Items.Count == EMCA.Application.Services.RegistrationService.PageSize) { <a class="button button-secondary" asp-action="Index" asp-route-eventId="@data.EventId" asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-checkIn="@Model.CheckIn" asp-route-page="@(data.Page + 1)">Trang sau</a> }</div></nav>
+</div>

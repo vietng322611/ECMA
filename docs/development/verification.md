@@ -61,3 +61,23 @@ The setup change is documentation-only. Verification used SDK 10.0.203:
 - `git diff --check`: succeeded. Relative links in all 10 harness documents resolved. All task document contents and the pre-existing project diff were reviewed; an independent read-only review found no actionable issues.
 
 No application source, packages, SRS, or project configuration was changed by that task. Its pre-existing web-project edit was preserved. PostgreSQL connection/migrations, authentication, product flows, and automated feature tests were not verified because those components did not exist.
+## PostgreSQL integration tests
+
+`tests/ECMA.Domain.Tests/PostgresIntegrationTests.cs` covers races and SQL behavior that mocks cannot prove (last seat, double submit, event cancellation vs registration, search wildcards/NFC/UTC+7 dates, agenda insert). Each test creates and drops its own `ecma_test_*` database on the server named by `ECMA_TEST_CONNECTION_STRING`; without the variable these tests are reported as skipped, not passed.
+
+```text
+ECMA_TEST_CONNECTION_STRING="Host=127.0.0.1;Port=5432;Database=postgres;Username=ecma;Password=<dev password>" dotnet test ECMA.sln
+```
+
+The account needs `CREATEDB`. Use a disposable development server only. Case-insensitive Vietnamese search relies on a UTF-8 database locale (the pinned `postgres` image default); a `C` locale does not fold non-ASCII letters.
+
+## Verification record (2026-10-25): agenda, public search, registration, participants
+
+Scope: task sheet items 7–13 (FR-SCH-01..03, FR-SRCH-01..03, FR-REG-01..04, FR-PART-01..04, plus BR-EVT-04 registration cascade). SDK 10.0.402, PostgreSQL 18.3 (UTF-8 locale) on a local disposable server.
+
+- `dotnet build ECMA.sln`: succeeded. Pre-existing warnings remain (CS0108 in Domain results, a missing `ECMA.Application` reference in the empty `ECMA.Application.Tests` project).
+- `dotnet test ECMA.sln` without `ECMA_TEST_CONNECTION_STRING`: 70 passed, 8 skipped. With it: 78 passed, 0 skipped; repeated three times with the same result.
+- Migration `AddRegistrations` only creates `registrations` (unique code and `(event_id, user_id)`, FK restrict, status/cancellation/check-in check constraints). The `AgendaItem` key change is model-only (no schema operation). Applied to the local `ecma_dev` database; `migrations list` shows all three migrations.
+- Regression: adding an agenda item previously failed with HTTP 500 (`DbUpdateConcurrencyException`, EF issued UPDATE for the new item). `AgendaItem.Id` is now `ValueGeneratedNever`; `AddAgenda_ToDraft_IsInsertedAndPersisted` fails without the fix and passes with it.
+- HTTP checks against the running app (HTTPS, real cookies and antiforgery tokens, curl): 118/118 passed. They cover agenda add/overlap/touching boundary/5-minute rule/lock after publish; search keyword (case, diacritics, literal `%`), type and inclusive UTC+7 date filters, invalid/repeated `page`; details visibility (Guest/owner/other organizer/registrant for Draft, Completed, Cancelled), invalid/unknown IDs, encoded agenda content, returnUrl to details; registration order (§4.3) including owner 403, already registered, full, closed after start, MANAGER block; My registrations, self-cancel (403/404/idempotent "Đã hủy"/re-register keeps code); participant list permissions, filters, search by code, stats, Absent only when Completed; manager cancel reason 400, posted `CancelSource` ignored; event cancellation cascading to EVENT while earlier MANAGER cancellation is kept. Start/end boundaries were simulated by shifting event times in the database because no test clock hook exists yet.
+- Not verified: visual rendering in Chrome/Edge at 1024 px, and NFR-05 performance.

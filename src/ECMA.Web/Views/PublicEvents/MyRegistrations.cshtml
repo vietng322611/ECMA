@@ -1,0 +1,37 @@
+@model MyRegistrationsViewModel
+@using ECMA.Domain.Enums
+@{
+    ViewData["Title"] = "Đăng ký của tôi";
+    var data = Model.Data;
+}
+<div class="page-shell">
+    <header class="page-heading"><div><p class="eyebrow">Tài khoản</p><h1>Đăng ký của tôi</h1></div></header>
+    @if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
+    <section class="data-panel" aria-labelledby="my-list-title">
+        <div class="panel-heading"><div><h2 id="my-list-title">Danh sách đăng ký</h2><p>@data.Items.Count đăng ký trên trang @data.Page</p></div></div>
+        @if (data.Items.Count == 0)
+        {
+            <div class="empty-state"><h3>Chưa có đăng ký</h3><p>Tìm một sự kiện công khai để đăng ký tham dự.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll"><table><thead><tr><th>Sự kiện</th><th>Thời gian</th><th>Địa điểm</th><th>Mã đăng ký</th><th>Đăng ký</th><th>Sự kiện</th><th>Điểm danh</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>
+            @foreach (var item in data.Items)
+            {
+                <tr>
+                    <td><a class="table-title" asp-action="Details" asp-route-id="@item.EventId">@item.EventTitle</a><span class="table-meta">@Labels.Type(item.EventType) · Đăng ký lúc @VietnamTime.Format(item.RegisteredAt, "dd/MM/yyyy HH:mm")</span></td>
+                    <td><strong>@VietnamTime.Format(item.StartAt, "dd/MM/yyyy")</strong><span class="table-meta">@VietnamTime.Format(item.StartAt, "HH:mm")–@VietnamTime.Format(item.EndAt, "dd/MM HH:mm")</span></td>
+                    <td class="table-location">@item.Location</td>
+                    <td><code class="registration-code">@item.Code</code></td>
+                    <td><span class="status status-@(item.Status == RegistrationStatus.Confirmed ? "published" : "cancelled")">@Labels.Registration(item.Status)</span>@if (item.Status == RegistrationStatus.Cancelled) { <span class="table-meta">@Labels.Source(item.CancelSource) · @VietnamTime.Format(item.CancelledAt!.Value, "dd/MM/yyyy HH:mm")</span><span class="table-meta">@item.CancelReason</span> }</td>
+                    <td><span class="status status-@item.EventStatus.ToString().ToLowerInvariant()">@Labels.Status(item.EventStatus)</span></td>
+                    <td>@(item.CheckedInAt is null ? "Chưa điểm danh" : "Đã điểm danh " + VietnamTime.Format(item.CheckedInAt.Value, "dd/MM/yyyy HH:mm"))</td>
+                    <td class="table-action">@if (item.CanCancel) { <form asp-action="CancelRegistration" asp-route-eventId="@item.EventId" asp-route-registrationId="@item.Id" method="post" data-confirm="Xác nhận hủy đăng ký sự kiện này?"><button class="button button-danger-outline" type="submit">Hủy đăng ký</button></form> }</td>
+                </tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+    <nav class="pagination" aria-label="Phân trang"><span>Trang @data.Page</span><div>@if (data.Page > 1) { <a class="button button-secondary" asp-action="MyRegistrations" asp-route-page="@(data.Page - 1)">Trang trước</a> } @if (data.Items.Count == EMCA.Application.Services.RegistrationService.PageSize) { <a class="button button-secondary" asp-action="MyRegistrations" asp-route-page="@(data.Page + 1)">Trang sau</a> }</div></nav>
+</div>
+@section Scripts { <script src="~/js/event-confirmations.js" asp-append-version="true"></script> }

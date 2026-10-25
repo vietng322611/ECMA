@@ -54,7 +54,8 @@ public sealed class AgendaItemConfiguration : IEntityTypeConfiguration<AgendaIte
             t.HasCheckConstraint("ck_agenda_minute_precision", "date_trunc('minute', start_at) = start_at AND date_trunc('minute', end_at) = end_at");
         });
         builder.HasKey(x => x.Id).HasName("pk_agenda_items");
-        builder.Property(x => x.Id).HasColumnName("id");
+        // IDs are assigned by the domain; without this EF treats a new item reached through Event.AgendaItems as an UPDATE.
+        builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(x => x.EventId).HasColumnName("event_id");
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(100);
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(1000);

@@ -102,6 +102,26 @@
   .agenda-actions { @apply flex items-start gap-3 text-sm font-bold; }
   .agenda-actions a { @apply text-emerald-800 hover:underline; }
   .agenda-actions button { @apply text-red-700 hover:underline; }
+  .public-filter-bar { @apply lg:grid-cols-[minmax(16rem,2fr)_minmax(9rem,0.7fr)_minmax(10rem,0.8fr)_minmax(10rem,0.8fr)_auto]; }
+  .availability { @apply inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide; }
+  .availability-open { @apply bg-emerald-100 text-emerald-800; }
+  .availability-full { @apply bg-amber-100 text-amber-900; }
+  .availability-closed { @apply bg-stone-200 text-stone-700; }
+  .registration-panel { @apply grid gap-4; }
+  .registration-panel h2 { @apply mb-0!; }
+  .registration-panel .availability { @apply w-fit; }
+  .seat-count { @apply text-sm text-stone-600; }
+  .seat-count strong { @apply text-3xl font-black tabular-nums text-stone-950; }
+  .registration-code { @apply whitespace-nowrap rounded bg-stone-100 px-2 py-1 font-mono text-xs font-bold tracking-wide text-stone-800; }
+  .stats-grid { @apply mb-6 grid grid-cols-2 border border-stone-200 bg-white md:grid-cols-4 xl:grid-cols-7; }
+  .stats-grid > div { @apply border-b border-r border-stone-100 px-5 py-4; }
+  .stats-grid dt { @apply text-xs font-bold uppercase tracking-wider text-stone-500; }
+  .stats-grid dd { @apply mt-2 text-2xl font-black tabular-nums text-stone-950; }
+  .stats-grid dd span { @apply text-sm font-semibold text-stone-500; }
+  .status-surface { @apply grid max-w-2xl justify-items-start gap-4; }
+  .status-surface h1 { @apply text-3xl font-black tracking-tight text-stone-950; }
+  .status-surface .notice { @apply mb-0 w-full; }
+  .form-surface > .facts { @apply mb-6; }
 }
 
 @media (max-width: 639px) {

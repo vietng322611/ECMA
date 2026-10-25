@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<EMCA.Application.Interfaces.IEventService, EMCA.Application.Services.EventService>();
         services.AddScoped<IPasswordService, PasswordHasherAdapter>();
         services.AddScoped<ISecurityStampGenerator, SecurityStampGenerator>();
+        services.AddScoped<IRegistrationRepository, RegistrationRepository>();
+        services.AddScoped<IRegistrationCodeGenerator, RegistrationCodeGenerator>();
         services.AddScoped<IClock, Clock>();
         services.AddScoped<AdminSeeder>();
 

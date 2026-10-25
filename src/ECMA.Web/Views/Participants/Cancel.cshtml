@@ -1,0 +1,13 @@
+@model ManagerCancelViewModel
+@{ ViewData["Title"] = "Hủy đăng ký của người tham dự"; }
+<div class="page-shell form-page">
+<a class="back-link" asp-action="Index" asp-route-eventId="@Model.EventId">Quay lại danh sách người tham dự</a>
+<header class="page-heading"><div><p class="eyebrow">@Model.EventTitle</p><h1>Hủy đăng ký của người tham dự</h1></div></header>
+<form class="form-surface danger-surface" asp-action="Cancel" asp-route-eventId="@Model.EventId" asp-route-registrationId="@Model.RegistrationId" method="post"
+      data-confirm="Hủy từ phía quản lý sẽ chặn người tham dự đăng ký lại sự kiện này và không có chức năng gỡ chặn. Xác nhận hủy đăng ký?">
+<dl class="facts"><div><dt>Người tham dự</dt><dd>@Model.FullName<span>@Model.Username</span></dd></div><div><dt>Mã đăng ký</dt><dd><code class="registration-code">@Model.Code</code></dd></div></dl>
+<p class="notice notice-error">Hủy từ phía quản lý sẽ chặn người tham dự đăng ký lại sự kiện này và không có chức năng gỡ chặn.</p>
+<div class="field"><label asp-for="Reason">Lý do hủy <span aria-hidden="true">*</span></label><textarea asp-for="Reason" rows="5" maxlength="200" required></textarea><span class="field-hint">Từ 1 đến 200 ký tự.</span><span asp-validation-for="Reason"></span></div>
+<div class="form-actions"><a class="button button-secondary" asp-action="Index" asp-route-eventId="@Model.EventId">Giữ đăng ký</a><button class="button button-danger" type="submit">Xác nhận hủy</button></div>
+</form></div>
+@section Scripts { <script src="~/js/event-confirmations.js" asp-append-version="true"></script> }

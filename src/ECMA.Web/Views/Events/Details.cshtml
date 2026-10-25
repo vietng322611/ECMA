@@ -15,6 +15,8 @@
 <header class="detail-hero"><div><div class="detail-kicker"><span>@typeLabel</span><span class="status status-@Model.Status.ToString().ToLowerInvariant()">@statusLabel</span></div><h1>@Model.Title</h1><p>@Model.Description</p></div><div class="detail-actions">
 @if (isDraft) { <a class="button button-secondary" asp-action="EditDraft" asp-route-id="@Model.Id">Sửa bản nháp</a><form asp-action="Publish" asp-route-id="@Model.Id" method="post" data-confirm="Xác nhận công bố sự kiện? Loại, thời gian và chương trình sẽ bị khóa."><button class="button button-primary" type="submit">Công bố</button></form> }
 else if (Model.CanEditPublished) { <a class="button button-secondary" asp-action="EditPublished" asp-route-id="@Model.Id">Cập nhật</a> }
+@if (Model.CanManage) { <a class="button button-secondary" asp-controller="Participants" asp-action="Index" asp-route-eventId="@Model.Id">Người tham dự và thống kê</a> }
+@if (!isDraft) { <a class="button button-secondary" asp-controller="PublicEvents" asp-action="Details" asp-route-id="@Model.Id">Trang công khai</a> }
 @if (Model.CanCancel) { <a class="button button-danger-outline" asp-action="Cancel" asp-route-id="@Model.Id">Hủy sự kiện</a> }
 </div></header>
 <div class="detail-layout"><main class="detail-main"><section class="agenda-section" aria-labelledby="agenda-title"><div class="section-heading"><div><p class="eyebrow">Lịch trình</p><h2 id="agenda-title">Chương trình</h2></div>@if (isDraft) { <a class="button button-primary" asp-action="AddAgenda" asp-route-eventId="@Model.Id">Thêm mục</a> }</div>

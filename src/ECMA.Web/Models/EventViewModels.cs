@@ -42,6 +42,7 @@ public sealed class EventDetailsViewModel
     public string? CancelReason { get; init; }
     public bool CanEditPublished { get; init; }
     public bool CanCancel { get; init; }
+    public bool CanManage { get; init; }
     public IReadOnlyList<AgendaItemViewModel> Agenda { get; init; } = [];
 }
 
