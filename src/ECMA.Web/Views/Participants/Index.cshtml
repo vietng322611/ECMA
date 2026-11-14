@@ -7,6 +7,7 @@
 }
 <div class="page-shell">
     <a class="back-link" asp-controller="Events" asp-action="Details" asp-route-id="@data.EventId">Quay lại chi tiết quản lý</a>
+    <a class="button button-primary" asp-controller="CheckIn" asp-action="Index" asp-route-eventId="@data.EventId">Điểm danh bằng mã</a>
     <header class="page-heading"><div><p class="eyebrow">Người tham dự và thống kê</p><h1>@data.EventTitle</h1><p class="field-hint">@VietnamTime.Format(data.StartAt) đến @VietnamTime.Format(data.EndAt) · <span class="status status-@data.EventStatus.ToString().ToLowerInvariant()">@Labels.Status(data.EventStatus)</span></p></div></header>
     @if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
     <dl class="stats-grid" aria-label="Thống kê toàn bộ sự kiện">

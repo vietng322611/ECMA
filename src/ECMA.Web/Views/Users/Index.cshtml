@@ -1,0 +1,24 @@
+@model ECMA.Web.Controllers.UsersPage
+@using ECMA.Domain.Enums
+@{ ViewData["Title"] = "Quản lý người dùng"; }
+<div class="page-shell">
+<header class="page-heading"><div><p class="eyebrow">FR-USER-01–03</p><h1>Quản lý người dùng</h1><p class="field-hint">Chỉ quản trị viên có quyền cập nhật vai trò và trạng thái tài khoản.</p></div></header>
+@if (TempData["SuccessMessage"] is string success) { <p class="notice notice-success" role="status">@success</p> }
+<form method="get" asp-action="Index" class="filter-bar">
+<div class="field"><label for="keyword">Tìm kiếm</label><input id="keyword" name="keyword" value="@Model.Keyword" maxlength="100" placeholder="Username hoặc họ tên" /></div>
+<div class="field"><label for="role">Vai trò</label><select name="role" id="role"><option value="All">Tất cả</option>@foreach (var r in Enum.GetValues<UserRole>()) { <option value="@r" selected="@(Model.Role == r.ToString())">@r</option> }</select></div>
+<div class="field"><label for="status">Trạng thái</label><select name="status" id="status"><option value="All">Tất cả</option>@foreach (var s in Enum.GetValues<UserStatus>()) { <option value="@s" selected="@(Model.Status == s.ToString())">@s</option> }</select></div>
+<button type="submit" class="button button-primary">Lọc</button><a asp-action="Index" class="button button-secondary">Xóa lọc</a>
+</form>
+<section class="data-panel"><div class="table-scroll"><table><thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Ngày tạo</th><th>Quyền và trạng thái</th></tr></thead><tbody>
+@foreach(var u in Model.Items) {
+<tr><td>@u.Username</td><td>@u.FullName</td><td>@VietnamTime.Format(u.CreatedAt, "dd/MM/yyyy HH:mm")</td><td>
+<form method="post" asp-action="Update" asp-route-id="@u.Id" class="flex flex-wrap gap-2 items-center">
+@Html.AntiForgeryToken()
+<label class="sr-only" for="role-@u.Id">Vai trò</label><select id="role-@u.Id" name="role">@foreach(var r in Enum.GetValues<UserRole>()) { <option value="@r" selected="@(u.Role == r)">@r</option> }</select>
+<label class="sr-only" for="status-@u.Id">Trạng thái</label><select id="status-@u.Id" name="status">@foreach(var s in Enum.GetValues<UserStatus>()) { <option value="@s" selected="@(u.Status == s)">@s</option> }</select>
+<button type="submit" class="button button-secondary" onclick="return confirm('Xác nhận cập nhật tài khoản này?')">Cập nhật</button></form></td></tr>
+}
+</tbody></table></div>@if(Model.Items.Count == 0) { <p class="field-hint">Không có tài khoản phù hợp.</p> }</section>
+<nav class="pagination"><span>Trang @Model.Page</span><div>@if(Model.Page > 1) { <a class="button button-secondary" asp-action="Index" asp-route-page="@(Model.Page-1)" asp-route-keyword="@Model.Keyword" asp-route-role="@Model.Role" asp-route-status="@Model.Status">Trang trước</a> } @if(Model.Items.Count == 20) { <a class="button button-secondary" asp-action="Index" asp-route-page="@(Model.Page+1)" asp-route-keyword="@Model.Keyword" asp-route-role="@Model.Role" asp-route-status="@Model.Status">Trang sau</a> }</div></nav>
+</div>

@@ -16,6 +16,10 @@
             {
                 <a class="truncate text-sm font-semibold text-stone-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-controller="PublicEvents" asp-action="MyRegistrations">Đăng ký của tôi</a>
             }
+            @if (User.IsInRole("Admin"))
+            {
+                <a class="truncate text-sm font-semibold text-stone-600 hover:text-emerald-800" asp-controller="Users" asp-action="Index">Người dùng</a>
+            }
             @if (User.IsInRole("Organizer") || User.IsInRole("Admin"))
             {
                 <a class="truncate text-sm font-semibold text-stone-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700" asp-controller="Events" asp-action="Index">Quản lý sự kiện</a>

@@ -33,6 +33,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<PublicEventService>();
 builder.Services.AddScoped<RegistrationService>();
+builder.Services.AddScoped<CheckInService>();
+builder.Services.AddScoped<UserManagementService>();
 builder.Services.AddScoped<AuthCookieService>();
 builder.Services.AddScoped<AuthSessionStore>();
 builder.Services.AddSingleton(new VietnamLocationCatalog(builder.Environment.ContentRootPath));

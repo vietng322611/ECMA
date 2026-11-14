@@ -43,6 +43,10 @@ public class User
         SecurityStamp = securityStamp;
     }
 
+    public void SetRole(UserRole role) => Role = role;
+
+    public void RotateSecurityStamp(string stamp) => SecurityStamp = stamp;
+
     public void SetStatus(UserStatus status)
     {
         Status = status;

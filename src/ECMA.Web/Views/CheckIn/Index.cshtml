@@ -1,0 +1,14 @@
+@model ECMA.Web.Controllers.CheckInForm
+@{ ViewData["Title"] = "Điểm danh"; }
+<div class="page-shell">
+    <a class="back-link" asp-controller="Participants" asp-action="Index" asp-route-eventId="@Model.EventId">Quay lại người tham dự</a>
+    <header class="page-heading"><div><p class="eyebrow">FR-ATT-01–03</p><h1>Điểm danh sự kiện</h1></div></header>
+    @if (TempData["SuccessMessage"] is string message) { <p class="notice notice-success" role="status">@message</p> }
+    <form asp-action="Index" asp-route-eventId="@Model.EventId" method="post" class="data-panel" style="padding:24px;max-width:650px">
+        @Html.AntiForgeryToken()
+        <div class="field"><label asp-for="Code">Mã đăng ký</label><input asp-for="Code" maxlength="64" placeholder="REG-XXXXXXXXXXXX" autocomplete="off" autofocus />
+        <span asp-validation-for="Code" class="text-red-700"></span></div>
+        <p class="field-hint">Chỉ người tổ chức hoặc Admin được điểm danh trong thời gian diễn ra sự kiện.</p>
+        <button class="button button-primary" type="submit">Xác nhận điểm danh</button>
+    </form>
+</div>
