@@ -275,7 +275,9 @@ public sealed class EventsController(IEventService events, IClock clock, Vietnam
     private IActionResult FormError(string view, object model, Error error)
     {
         if (error.Code is "NotFound" or "Forbidden" or "Conflict") return ErrorResult(error);
-        ModelState.AddModelError(error.Code is "BadRequest" ? string.Empty : error.Code, error.Message);
+        // Domain codes such as "Time"/"Location"/"Agenda" have no matching field, so show them in the summary instead of silently dropping them.
+        var key = error.Code != "BadRequest" && model.GetType().GetProperty(error.Code) is not null ? error.Code : string.Empty;
+        ModelState.AddModelError(key, error.Message);
         return BadRequestView(view, model);
     }
 
