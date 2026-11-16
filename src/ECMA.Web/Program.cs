@@ -57,8 +57,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             OnRedirectToLogin = context =>
             {
                 var returnUrl = ReturnUrlPolicy.Canonicalize(context.Request.PathBase + context.Request.Path + context.Request.QueryString);
-                context.HttpContext.RequestServices.GetRequiredService<ITempDataDictionaryFactory>()
-                    .GetTempData(context.HttpContext)["ErrorMessage"] = "Vui lòng đăng nhập bằng tài khoản đang hoạt động";
+                var tempData = context.HttpContext.RequestServices.GetRequiredService<ITempDataDictionaryFactory>()
+                    .GetTempData(context.HttpContext);
+                tempData["ErrorMessage"] = "Vui lòng đăng nhập bằng tài khoản đang hoạt động";
+                // Authorization short-circuits before MVC runs its TempData save filter, so persist explicitly.
+                tempData.Save();
                 context.Response.Redirect(context.Options.LoginPath + (returnUrl is null ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
                 return Task.CompletedTask;
             }
