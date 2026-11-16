@@ -16,6 +16,8 @@ public class AuthServiceTests
     private readonly Mock<IPasswordService> _mockPasswords = new();
     private readonly Mock<ISecurityStampGenerator> _mockStamps = new();
 
+    private const string LoginFailure = "Không thể đăng nhập. Kiểm tra thông tin hoặc trạng thái tài khoản";
+
     private readonly AuthService _service;
 
     public AuthServiceTests()
@@ -102,6 +104,8 @@ public class AuthServiceTests
 
         Assert.True(result.IsSuccess);
         _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockUnitOfWork.Verify(u => u.Users.TryUpdatePasswordAsync(
+            user.Id, "oldhash", "stamp", "newhash", "newstamp", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -166,6 +170,133 @@ public class AuthServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal("New Name", result.Value.FullName);
+    }
+
+    [Theory]
+    [InlineData("", "Password123")]          // empty username
+    [InlineData("abc", "Password123")]       // too short
+    [InlineData("1tester", "Password123")]   // starts with digit
+    [InlineData("tester01", "")]             // empty password
+    public async Task LoginAsync_InvalidShape_IsGenericValidationFailureBeforeLookup(string username, string password)
+    {
+        var result = await _service.LoginAsync(new LoginRequest(username, password));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Login", result.Error!.Code);
+        Assert.Equal(LoginFailure, result.Error.Message);
+        _mockUnitOfWork.Verify(u => u.Users.FindByUsernameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LoginAsync_UnknownUser_UsesUnauthorizedCode()
+    {
+        _mockUnitOfWork.Setup(u => u.Users.FindByUsernameAsync("ghost", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var result = await _service.LoginAsync(new LoginRequest("ghost", "Password123"));
+
+        Assert.Equal("Unauthorized", result.Error!.Code);
+        Assert.Equal(LoginFailure, result.Error.Message);
+    }
+
+    [Fact]
+    public async Task LoginAsync_WrongPassword_UsesSameGenericMessage()
+    {
+        var user = new User("testuser", "hash", "stamp", "Test User", UserRole.Attendee, UserStatus.Active);
+        _mockUnitOfWork.Setup(u => u.Users.FindByUsernameAsync("testuser", It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _mockPasswords.Setup(p => p.VerifyPassword("WrongPass1", "hash")).Returns(PasswordVerificationResult.Failed);
+
+        var result = await _service.LoginAsync(new LoginRequest("testuser", "WrongPass1"));
+
+        Assert.Equal("Unauthorized", result.Error!.Code);
+        Assert.Equal(LoginFailure, result.Error.Message);
+    }
+
+    [Fact]
+    public async Task LoginAsync_NeedsRehash_UpdatesPasswordWithSameStamp()
+    {
+        var user = new User("testuser", "oldhash", "stamp", "Test User", UserRole.Attendee, UserStatus.Active);
+        _mockUnitOfWork.Setup(u => u.Users.FindByUsernameAsync("testuser", It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _mockPasswords.Setup(p => p.VerifyPassword("Password123", "oldhash")).Returns(PasswordVerificationResult.VerifiedNeedsRehash);
+        _mockPasswords.Setup(p => p.HashPassword("Password123")).Returns("newhash");
+        _mockUnitOfWork.Setup(u => u.Users.TryUpdatePasswordAsync(
+                user.Id, "oldhash", "stamp", "newhash", "stamp", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.LoginAsync(new LoginRequest("testuser", "Password123"));
+
+        Assert.True(result.IsSuccess);
+        _mockUnitOfWork.Verify(u => u.Users.TryUpdatePasswordAsync(
+            user.Id, "oldhash", "stamp", "newhash", "stamp", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_ValidatesUsernameThenFullNameThenPasswordThenConfirmation()
+    {
+        Assert.Equal("Username", (await _service.RegisterAsync(new RegisterRequest("ab", "A", "x", "y"))).Error!.Code);
+        Assert.Equal("FullName", (await _service.RegisterAsync(new RegisterRequest("testuser", "A", "x", "y"))).Error!.Code);
+        Assert.Equal("Password", (await _service.RegisterAsync(new RegisterRequest("testuser", "Test User", "short", "short"))).Error!.Code);
+
+        var mismatch = await _service.RegisterAsync(new RegisterRequest("testuser", "Test User", "Password123", "Password124"));
+
+        Assert.Equal("ConfirmPassword", mismatch.Error!.Code);
+        Assert.Equal("Xác nhận mật khẩu không khớp", mismatch.Error.Message);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_NormalizesUsernameToLowercaseAndTrimsFullName()
+    {
+        _mockUnitOfWork.Setup(u => u.Users.UsernameExistsAsync("testuser", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _mockStamps.Setup(s => s.GenerateStamp()).Returns("stamp");
+        _mockPasswords.Setup(p => p.HashPassword("Password123")).Returns("hash");
+
+        var result = await _service.RegisterAsync(new RegisterRequest("  TESTUSER ", " Test User ", "Password123", "Password123"));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("testuser", result.Value!.Username);
+        Assert.Equal("Test User", result.Value.FullName);
+        Assert.Equal("Attendee", result.Value.Role);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_RejectsShortNameAndReportsMissingUser()
+    {
+        _mockUnitOfWork.Setup(u => u.Users.FindByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var shortName = await _service.UpdateProfileAsync(Guid.NewGuid(), "A");
+        var missing = await _service.UpdateProfileAsync(Guid.NewGuid(), "Trần Thị Bình");
+
+        Assert.Equal("FullName", shortName.Error!.Code);
+        Assert.Equal("Họ tên phải dài từ 2 đến 100 ký tự", shortName.Error.Message);
+        Assert.Equal("NotFound", missing.Error!.Code);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_ValidatesNewPasswordBeforeLoadingUser()
+    {
+        Assert.Equal("NewPassword", (await _service.ChangePasswordAsync(
+            Guid.NewGuid(), new ChangePasswordRequest("Old", "short", "short"))).Error!.Code);
+        Assert.Equal("ConfirmNewPassword", (await _service.ChangePasswordAsync(
+            Guid.NewGuid(), new ChangePasswordRequest("Old", "NewPassword123", "NewPassword124"))).Error!.Code);
+        _mockUnitOfWork.Verify(u => u.Users.FindByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_ReusingCurrentPassword_IsRejected()
+    {
+        var user = new User("testuser", "hash", "stamp", "Test User", UserRole.Attendee, UserStatus.Active);
+        _mockUnitOfWork.Setup(u => u.Users.FindByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _mockPasswords.Setup(p => p.VerifyPassword("Password123", "hash")).Returns(PasswordVerificationResult.Verified);
+
+        var result = await _service.ChangePasswordAsync(
+            user.Id, new ChangePasswordRequest("Password123", "Password123", "Password123"));
+
+        Assert.Equal("NewPassword", result.Error!.Code);
+        Assert.Equal("Mật khẩu mới phải khác mật khẩu hiện tại", result.Error.Message);
+        _mockUnitOfWork.Verify(u => u.Users.TryUpdatePasswordAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 }
 
